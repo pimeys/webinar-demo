@@ -1,0 +1,8 @@
+extend schema
+    @link(
+        url: "https://specs.grafbase.com/grafbase"
+        import: ["InputValueSet", "JsonTemplate"]
+    )
+
+directive @echoField(input: InputValueSet! = "*") on FIELD_DEFINITION
+directive @randomBankEvents(selection: JsonTemplate = ".") on FIELD_DEFINITION

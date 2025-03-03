@@ -1,0 +1,2 @@
+[subgraphs.echo]
+schema_path = "./subgraph.graphql"

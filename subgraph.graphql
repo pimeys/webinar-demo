@@ -1,0 +1,22 @@
+extend schema
+    @link(
+        url: "file:///home/pimeys/code/grafbase/webinar/echo/build"
+        import: ["@echoField", "@randomBankEvents"]
+    )
+
+scalar JSON
+
+type Query {
+    echo(input: JSON!): JSON! @echoField
+}
+
+type Subscription {
+    bankEvents(minimumAmount: Int!): BankEvent!
+        @randomBankEvents(selection: "select(.amount > {{args.minimumAmount}})")
+}
+
+type BankEvent {
+    credit: String!
+    debit: String!
+    amount: Int!
+}
