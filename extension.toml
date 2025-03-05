@@ -3,9 +3,9 @@ name = "echo"
 version = "0.1.0"
 kind = "resolver"
 description = "A new extension"
+license = "MIT"
 # homepage_url = "https://example.com/my-extension"
 # repository_url = "https://github.com/my-username/my-extension"
-# license = "MIT"
 
 # These are the default permissions for the extension.
 # The user can enable or disable them as needed in the gateway
@@ -18,4 +18,3 @@ environment_variables = false
 
 [directives]
 definitions = "definitions.graphql"
-field_resolvers = ["echoField"]

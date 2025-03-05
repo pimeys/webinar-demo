@@ -117,14 +117,32 @@ async fn test_subscription() {
         amount: i32,
     }
 
-    let subscription = runner
+    let events = runner
         .graphql_subscription::<Event>(query)
         .unwrap()
         .subscribe()
         .await
-        .unwrap();
+        .unwrap()
+        .take(3)
+        .collect::<Vec<_>>()
+        .await;
 
-    let events = subscription.take(3).collect::<Vec<_>>().await;
+    assert_eq!(3, events.len());
+
+    assert!(events[0].data.bank_events.amount >= 1000);
+    assert!(events[1].data.bank_events.amount >= 1000);
+    assert!(events[2].data.bank_events.amount >= 1000);
+
+    let events = runner
+        .graphql_subscription::<Event>(query)
+        .unwrap()
+        .subscribe()
+        .await
+        .unwrap()
+        .take(3)
+        .collect::<Vec<_>>()
+        .await;
+
     assert_eq!(3, events.len());
 
     assert!(events[0].data.bank_events.amount >= 1000);

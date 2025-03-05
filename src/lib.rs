@@ -1,45 +1,12 @@
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use grafbase_sdk::{
-    Error, Extension, Resolver, ResolverExtension, SharedContext, Subscription,
+    Error, Extension, Headers, Resolver, ResolverExtension, Subscription,
     jq_selection::JqSelection,
     types::{Configuration, FieldDefinitionDirective, FieldInputs, FieldOutput, SchemaDirective},
 };
 use rand::{Rng, rngs::ThreadRng};
 use uuid::Uuid;
-
-#[derive(ResolverExtension)]
-struct Echo {
-    jq: Rc<RefCell<JqSelection>>,
-}
-
-#[derive(serde::Deserialize)]
-struct EchoDirective {
-    input: Input,
-}
-
-#[derive(serde::Deserialize)]
-struct Input {
-    input: serde_json::Value,
-}
-
-struct RandomBankEvents {
-    jq: Rc<RefCell<JqSelection>>,
-    rng: ThreadRng,
-    selection: String,
-}
-
-#[derive(serde::Serialize)]
-struct BankEvent {
-    credit: String,
-    debit: String,
-    amount: i32,
-}
-
-#[derive(serde::Deserialize)]
-struct BankDirective {
-    selection: String,
-}
 
 impl Extension for Echo {
     fn new(_: Vec<SchemaDirective>, _: Configuration) -> Result<Self, Box<dyn std::error::Error>> {
@@ -47,6 +14,63 @@ impl Extension for Echo {
             jq: Rc::new(RefCell::new(JqSelection::new())),
         })
     }
+}
+
+impl Resolver for Echo {
+    fn resolve_field(
+        &mut self,
+        _headers: Headers,
+        _subgraph_name: &str,
+        directive: FieldDefinitionDirective<'_>,
+        _field_inputs: FieldInputs,
+    ) -> Result<FieldOutput, Error> {
+        let directive: EchoDirective = directive.arguments()?;
+        let mut output = FieldOutput::new();
+
+        output.push_value(directive.input.input);
+
+        Ok(output)
+    }
+
+    fn resolve_subscription(
+        &mut self,
+        _: Headers,
+        _: &str,
+        directive: FieldDefinitionDirective<'_>,
+    ) -> Result<Box<dyn Subscription>, Error> {
+        let directive: BankDirective = directive.arguments()?;
+
+        let subscription = RandomBankEvents {
+            jq: self.jq.clone(),
+            rng: rand::rng(),
+            selection: directive.selection,
+        };
+
+        Ok(Box::new(subscription))
+    }
+
+    fn subscription_key(
+        &mut self,
+        _: &Headers,
+        subgraph_name: &str,
+        directive: FieldDefinitionDirective<'_>,
+    ) -> Option<Vec<u8>> {
+        let mut id = Vec::new();
+
+        id.extend(subgraph_name.as_bytes());
+        id.extend(directive.name().as_bytes());
+        id.extend(directive.site().parent_type_name().as_bytes());
+        id.extend(directive.site().field_name().as_bytes());
+        id.extend(directive.arguments_bytes());
+
+        Some(id)
+    }
+}
+
+struct RandomBankEvents {
+    jq: Rc<RefCell<JqSelection>>,
+    rng: ThreadRng,
+    selection: String,
 }
 
 impl Subscription for RandomBankEvents {
@@ -88,36 +112,29 @@ impl Subscription for RandomBankEvents {
     }
 }
 
-impl Resolver for Echo {
-    fn resolve_field(
-        &mut self,
-        _: SharedContext,
-        _: &str,
-        directive: FieldDefinitionDirective<'_>,
-        _: FieldInputs,
-    ) -> Result<FieldOutput, Error> {
-        let directive: EchoDirective = directive.arguments()?;
-        let mut output = FieldOutput::new();
+#[derive(ResolverExtension)]
+struct Echo {
+    jq: Rc<RefCell<JqSelection>>,
+}
 
-        output.push_value(directive.input.input);
+#[derive(serde::Deserialize)]
+struct EchoDirective {
+    input: Input,
+}
 
-        Ok(output)
-    }
+#[derive(serde::Deserialize)]
+struct Input {
+    input: serde_json::Value,
+}
 
-    fn resolve_subscription(
-        &mut self,
-        _: SharedContext,
-        _: &str,
-        directive: FieldDefinitionDirective<'_>,
-    ) -> Result<Box<dyn Subscription>, Error> {
-        let directive: BankDirective = directive.arguments()?;
+#[derive(serde::Serialize)]
+struct BankEvent {
+    credit: String,
+    debit: String,
+    amount: i32,
+}
 
-        let subscription = RandomBankEvents {
-            jq: self.jq.clone(),
-            rng: rand::rng(),
-            selection: directive.selection,
-        };
-
-        Ok(Box::new(subscription))
-    }
+#[derive(serde::Deserialize)]
+struct BankDirective {
+    selection: String,
 }
